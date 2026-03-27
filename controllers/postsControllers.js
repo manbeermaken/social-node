@@ -25,6 +25,20 @@ const getPost = [getPostFromId, (req, res) => {
     res.json(res.post)
 }]
 
+const getUserPosts = async (req, res) => {
+    try {
+        const user = await User.findOne({ username: req.params.username })
+        if (!user) { return res.status(404).json({ message: 'User not found' }) }
+
+        const posts = await Post.find({ authorId: user._id })
+        res.status(200).json(posts)
+
+    } catch (err) {
+        console.error("Error in getUserPosts:", err)
+        res.status(500).json({ message: err.message })
+    }
+}
+
 const createPost = async (req, res) => {
     let user
     try {
@@ -70,4 +84,4 @@ const deletePost = [getPostFromId, async (req, res) => {
     }
 }]
 
-export { getAllPosts, getPost, createPost, updatePost, deletePost }
+export { getAllPosts, getPost, createPost, updatePost, deletePost, getUserPosts }
