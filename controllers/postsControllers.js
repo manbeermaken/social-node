@@ -17,9 +17,7 @@ const getPostFromId = async (req, res, next) => {
 
 const getAllPosts = async (req, res) => {
     const posts = await Post.find()
-    console.log(req.userId)
-    const user = await User.find({_id:req.userId})
-    console.log(user)
+    const user = await User.find({ _id: req.userId })
     res.json(posts)
 }
 
@@ -28,15 +26,23 @@ const getPost = [getPostFromId, (req, res) => {
 }]
 
 const createPost = async (req, res) => {
+    let user
+    try {
+        user = await User.findOne({ _id: req.userId })
+    } catch (err) {
+        res.status(400).json({ message: err.message })
+    }
     const post = new Post({
         title: req.body.title,
-        content: req.body.content
+        content: req.body.content,
+        authorId: user._id,
+        authorName: user.username
     })
     try {
         const newPost = await post.save()
         res.status(201).json(newPost)
-    } catch (e) {
-        res.status(400).json({ message: e.message })
+    } catch (err) {
+        res.status(400).json({ message: err.message })
     }
 }
 

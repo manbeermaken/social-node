@@ -11,12 +11,15 @@ const postSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Post content is required']
   },
-  // author: {
-  //   // This stores the MongoDB ObjectId of the user who created the post
-  //   type: mongoose.Schema.Types.ObjectId,
-  //   ref: 'User', 
-  //   required: true
-  // },
+  authorId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User', 
+    required: true
+  },
+  authorName: {
+    type: String,
+    required: true
+  },
 },{
     timestamps: true
 })
