@@ -1,6 +1,6 @@
-import Post from "../models/Post.ts";
-import type { IPost } from "../models/Post.ts";
-import User from "../models/User.ts";
+import Post from "../models/Post.js";
+import type { IPost } from "../models/Post.js";
+import User from "../models/User.js";
 import type { Request, Response, NextFunction } from 'express';
 
 interface CustomRequest extends Request{

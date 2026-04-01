@@ -4,24 +4,35 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "node --env-file=.env --watch app.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "tsx watch --env-file=.env src/app.ts",
+    "build": "tsc",
+    "start": "node --env-file=.env dist/app.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "module",
   "dependencies": {
+    "@prisma/adapter-pg": "^7.6.0",
+    "@prisma/client": "^7.6.0",
     "bcrypt": "^6.0.0",
+    "dotenv": "^17.3.1",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.3.2",
     "mongoose-unique-validator": "^6.1.1",
+    "pg": "^8.20.0",
     "redis": "^5.11.0"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
     "@types/express": "^5.0.6",
-    "@types/jsonwebtoken": "^9.0.10"
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^25.5.0",
+    "@types/pg": "^8.20.0",
+    "prisma": "^7.6.0",
+    "tsc-watch": "^7.2.0",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.2"
   }
 }

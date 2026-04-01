@@ -1,10 +1,11 @@
 import jwt from 'jsonwebtoken'
 import type { JwtPayload, VerifyErrors } from 'jsonwebtoken'
-import User from '../models/User.ts'
-import redisClient from '../config/redis.ts'
+import User from '../models/User.js'
+import redisClient from '../config/redis.js'
 import bcrypt from 'bcrypt'
 import mongoose from 'mongoose'
 import type { Request, Response } from 'express';
+import {prisma} from '../config/prisma.js'
 
 interface CustomJwtPayload extends JwtPayload{
     id: string
