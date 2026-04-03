@@ -3,7 +3,7 @@ import mongoose, { Schema, Document, Types } from "mongoose";
 export interface IPost extends Document {
   title: string;
   content: string;
-  authorId: Types.ObjectId; 
+  authorId: string; 
   authorName: string;
   createdAt: Date;
   updatedAt: Date;
@@ -22,8 +22,7 @@ const postSchema = new Schema<IPost>(
       required: [true, "Post content is required"],
     },
     authorId: {
-      type: Schema.Types.ObjectId,
-      ref: "User",
+      type: String,
       required: true,
       index: true,
     },

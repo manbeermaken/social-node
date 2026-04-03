@@ -1,7 +1,7 @@
 import Post from "../models/Post.js";
 import type { IPost } from "../models/Post.js";
-import User from "../models/User.js";
 import type { Request, Response, NextFunction } from 'express';
+import {prisma} from '../config/prisma.js'
 
 interface CustomRequest extends Request{
     post?: IPost;
@@ -50,10 +50,14 @@ export function getPost(req: CustomRequest, res: Response) {
 
 const getUserPosts = async (req: Request, res: Response) => {
     try {
-        const user = await User.findOne({ username: req.params.username })
+        const { username } = req.params
+        const user = await prisma.user.findUnique({
+            where:{ username:String(username) },
+            select:{ id:true }
+        })
         if (!user) { return res.status(404).json({ message: 'User not found' }) }
 
-        const posts = await Post.find({ authorId: user._id })
+        const posts = await Post.find({ authorId: user.id })
         res.status(200).json(posts)
 
     } catch (err) {
@@ -68,13 +72,17 @@ const getUserPosts = async (req: Request, res: Response) => {
 
 const createPost = async (req: CustomRequest, res: Response) => {
     try {
-        const user = await User.findOne({ _id: req.userId })
+        const id = req.userId
+        const user = await prisma.user.findUnique({
+            where:{ id },
+            select:{ id:true, username:true}
+        })
         if (!user) { return res.status(404).json({ message: "User not found" }) }
 
         const post = new Post({
             title: req.body.title,
             content: req.body.content,
-            authorId: user._id,
+            authorId: user.id,
             authorName: user.username
         })
         

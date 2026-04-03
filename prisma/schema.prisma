@@ -16,6 +16,7 @@ model User {
   updatedAt DateTime @updatedAt
 
   @@index([username])
+  @@map("users")
 }
 
 enum Role {
