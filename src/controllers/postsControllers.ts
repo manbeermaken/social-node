@@ -6,6 +6,7 @@ import {prisma} from '../config/prisma.js'
 interface CustomRequest extends Request{
     post?: IPost;
     userId?: string;
+    username?: string;
 }
 
 const getPostFromId = async (req: CustomRequest, res: Response, next: NextFunction) => {
@@ -13,7 +14,7 @@ const getPostFromId = async (req: CustomRequest, res: Response, next: NextFuncti
     try {
         post = await Post.findById(req.params.id)
         if (post === null) {
-            return res.status(404).json({ message: "cannot find post" })
+            return res.status(404).json({ message: "Cannot find post" })
         }
     } catch (err) {
         if(err instanceof Error){
@@ -27,12 +28,33 @@ const getPostFromId = async (req: CustomRequest, res: Response, next: NextFuncti
     next()
 }
 
-const getAllPosts = async (req: Request, res: Response) => {
+export async function getPosts(req: Request, res: Response){
     try {
-        const posts = await Post.find();
-        res.json(posts);
+        const limit = parseInt(req.query.limit as string) || 10
+        const cursor = req.query.cursor as string
+        let query: any = {}
+        if(cursor){
+            query.createdAt = { $lt : new Date(cursor) }
+        }
+        
+        const posts = await Post.find(query)
+            .sort({ createdAt: -1 })
+            .limit(limit+1)
+            .lean()
+
+        const hasNextPage = posts.length > limit 
+        const results = hasNextPage ? posts.slice(0, -1) : posts;
+
+        const nextCursor = hasNextPage 
+        ? results[results.length - 1].createdAt 
+        : null;
+
+        res.status(200).json({
+            posts: results,
+            nextCursor,
+        });
     } catch (err) {
-        console.log("Error in getting all posts: ",err)
+        console.log("Error getting posts: ",err)
         if (err instanceof Error) {
             return res.status(500).json({ message: err.message })
         } else {
@@ -55,10 +77,35 @@ const getUserPosts = async (req: Request, res: Response) => {
             where:{ username:String(username) },
             select:{ id:true }
         })
+
         if (!user) { return res.status(404).json({ message: 'User not found' }) }
 
-        const posts = await Post.find({ authorId: user.id })
-        res.status(200).json(posts)
+        const limit = parseInt(req.query.limit as string) || 10
+        const cursor = req.query.cursor as string
+        let query: any = {
+            authorId : user.id
+        }
+
+        if(cursor){
+            query.createdAt = { $lt : new Date(cursor) }
+        }
+
+        const posts = await Post.find(query)
+                                .sort({ createdAt: -1 })
+                                .limit(limit+1)
+                                .lean()
+
+        const hasNextPage = posts.length > limit 
+        const results = hasNextPage ? posts.slice(0, -1) : posts;
+
+        const nextCursor = hasNextPage 
+        ? results[results.length - 1].createdAt 
+        : null;
+
+        res.status(200).json({
+            posts: results,
+            nextCursor,
+        });
 
     } catch (err) {
         console.error("Error in getUserPosts:", err)
@@ -140,4 +187,4 @@ export async function deletePost(req: CustomRequest, res: Response) {
     }
 }
 
-export { getAllPosts, createPost, getUserPosts, getPostFromId }
+export { createPost, getUserPosts, getPostFromId }

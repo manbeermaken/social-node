@@ -6,12 +6,13 @@ import type { Request, Response } from 'express';
 import {prisma} from '../config/prisma.js'
 
 interface CustomJwtPayload extends JwtPayload{
-    id: string
+    id: string;
+    username: string;
 }
 
-const generateTokens = (userId: string): [string,string] => {
-    const accessToken = jwt.sign({ id: userId }, process.env.ACCESS_TOKEN_SECRET!, { expiresIn: '15m' })
-    const refreshToken = jwt.sign({ id: userId }, process.env.REFRESH_TOKEN_SECRET!)
+const generateTokens = (userId: string, username: string): [string,string] => {
+    const accessToken = jwt.sign({ id: userId, username }, process.env.ACCESS_TOKEN_SECRET!, { expiresIn: '15m' })
+    const refreshToken = jwt.sign({ id: userId, username }, process.env.REFRESH_TOKEN_SECRET!)
     return [accessToken, refreshToken]
 }
 
@@ -26,7 +27,7 @@ export const login = async (req: Request, res: Response) => {
         if (!user || !(await bcrypt.compare(password, user.password))) {
             return res.status(401).json({ message: "Invalid username or password" })
         }
-        const [accessToken, refreshToken] = generateTokens(user.id)
+        const [accessToken, refreshToken] = generateTokens(user.id,user.username)
         const SEVEN_DAYS = 60 * 60 * 24 * 7
         await redisClient.setEx(refreshToken, SEVEN_DAYS, user.id)
         res.json({ accessToken, refreshToken })
@@ -52,7 +53,9 @@ export const refreshToken = async (req: Request, res: Response) => {
             if (err || !decoded) { return res.status(403).json({ message: "Invalid token" }) }
             const payload = decoded as CustomJwtPayload
             const userId = payload.id
-            const accessToken = jwt.sign({ id: userId }, process.env.ACCESS_TOKEN_SECRET!, { expiresIn: '15m' })
+            const username = payload.username
+            const accessToken = jwt.sign({ id: userId, username }, process.env.ACCESS_TOKEN_SECRET!, { expiresIn: '15m' })
+            console.log("Token Refreshed")
             res.json({ accessToken })
         })
     } catch (err) {
@@ -71,7 +74,7 @@ export const signup = async (req: Request, res: Response) => {
                 password: hashedPassword
             }
         })
-        const [accessToken, refreshToken] = generateTokens(user.id)
+        const [accessToken, refreshToken] = generateTokens(user.id,user.username)
         const SEVEN_DAYS = 60 * 60 * 24 * 7
         await redisClient.setEx(refreshToken, SEVEN_DAYS, user.id)
         res.status(201).json({ accessToken, refreshToken })
@@ -91,8 +94,9 @@ export const logout = async (req: Request, res: Response) => {
     const refreshToken = req.body.token
     if (refreshToken == null) { return res.status(401).json({ message: "Token not provided" }) }
     try {
-        const tokenExists = await redisClient.get(refreshToken)
-        if (!tokenExists) { return res.status(403).json({ message: "Invalid token" }) }
+        // const tokenExists = await redisClient.get(refreshToken)
+        // if (!tokenExists) { return res.status(403).json({ message: "Invalid token" }) }
+        // Redis .del() returns 1 if deleted, 0 if not.
         await redisClient.del(refreshToken)
         res.status(204).send()
     } catch (err) {

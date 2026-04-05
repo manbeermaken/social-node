@@ -5,7 +5,7 @@ const router = express.Router()
 
 router.post('/login',login)
 
-router.delete('/logout',logout)
+router.delete('/logout', logout)
 
 router.post('/signup',signup)
 

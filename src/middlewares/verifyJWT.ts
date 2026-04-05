@@ -4,9 +4,11 @@ import type { Request, Response, NextFunction } from 'express';
 
 interface AuthRequest extends Request {
     userId?: string;
+    username: string;
 }
 interface CustomJwtPayload extends JwtPayload{
-    id: string
+    id: string;
+    username: string;
 }
 
 const verifyJWT = (req: AuthRequest, res: Response, next: NextFunction) => {
@@ -23,6 +25,7 @@ const verifyJWT = (req: AuthRequest, res: Response, next: NextFunction) => {
             if (err || !decoded) return res.status(403).json({ message: "Invalid or Expired token" })
             const payload = decoded as CustomJwtPayload
             req.userId = payload.id
+            req.username = payload.username
             next()
         }
     )
