@@ -126,9 +126,24 @@ const createPost = async (req: CustomRequest, res: Response) => {
         })
         if (!user) { return res.status(404).json({ message: "User not found" }) }
 
+        const title = req.body.title
+        const content = req.body.content
+
+        // moderation
+        const modRes = await fetch(`${process.env.FASTAPI_URL}/moderate`,{
+            method: "POST",
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({title,content})
+        })
+
+        const data = await modRes.json()
+        if(data.is_flagged){
+            throw new Error('Moderation Failed')
+        }
+
         const post = new Post({
-            title: req.body.title,
-            content: req.body.content,
+            title: title,
+            content: content,
             authorId: user.id,
             authorName: user.username
         })
@@ -157,6 +172,20 @@ export async function updatePost(req: CustomRequest, res: Response) {
         req.post.content = req.body.content
     }
     try {
+        const title = req.body.title
+        const content = req.body.content
+        // moderation
+        const modRes = await fetch(`${process.env.FASTAPI_URL}/moderate`,{
+            method: "POST",
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({title,content})
+        })
+
+        const data = await modRes.json()
+        if(data.is_flagged){
+            throw new Error('Moderation Failed')
+        }
+
         const updatedPost = await req.post.save()
         res.json(updatedPost)
     } catch (err) {

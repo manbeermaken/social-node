@@ -6,6 +6,7 @@ declare global {
       POSTGRES_DATABASE_URL: string;
       ACCESS_JWT_SECRET: string; 
       REFRESH_JWT_SECRET: string;
+      FASTAPI_URL:string;
     }
   }
 }
