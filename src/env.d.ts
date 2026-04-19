@@ -7,6 +7,7 @@ declare global {
       ACCESS_JWT_SECRET: string; 
       REFRESH_JWT_SECRET: string;
       FASTAPI_URL:string;
+      RESEND_API_KEY:string;
     }
   }
 }

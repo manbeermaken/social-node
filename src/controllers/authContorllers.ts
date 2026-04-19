@@ -3,14 +3,14 @@ import type { JwtPayload, VerifyErrors } from 'jsonwebtoken'
 import redisClient from '../config/redis.js'
 import bcrypt from 'bcrypt'
 import type { Request, Response } from 'express';
-import {prisma} from '../config/prisma.js'
+import { prisma } from '../config/prisma.js'
 
 interface CustomJwtPayload extends JwtPayload{
     id: string;
     username: string;
 }
 
-const generateTokens = (userId: string, username: string): [string,string] => {
+export const generateTokens = (userId: string, username: string): [string,string] => {
     const accessToken = jwt.sign({ id: userId, username }, process.env.ACCESS_TOKEN_SECRET!, { expiresIn: '15m' })
     const refreshToken = jwt.sign({ id: userId, username }, process.env.REFRESH_TOKEN_SECRET!)
     return [accessToken, refreshToken]
@@ -55,7 +55,6 @@ export const refreshToken = async (req: Request, res: Response) => {
             const userId = payload.id
             const username = payload.username
             const accessToken = jwt.sign({ id: userId, username }, process.env.ACCESS_TOKEN_SECRET!, { expiresIn: '15m' })
-            console.log("Token Refreshed")
             res.json({ accessToken })
         })
     } catch (err) {

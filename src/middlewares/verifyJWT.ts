@@ -24,7 +24,6 @@ const verifyJWT = (req: Request, res: Response, next: NextFunction) => {
             
             const payload = decoded as CustomJwtPayload;
             
-            // TypeScript now accepts these because of your global types file!
             req.userId = payload.id;
             req.username = payload.username;
             
