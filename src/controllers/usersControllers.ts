@@ -1,59 +1,60 @@
-import type { Request, Response } from 'express';
+import type { RequestHandler } from "express";
 import redisClient from "../config/redis.js";
-import { prisma } from "../config/prisma.js";
-import { generateTokens } from './authContorllers.js';
+import { generateTokens } from "./authContorllers.js";
+import { userInsertSchema, users } from "../db/schema.js";
+import HttpError from "../utils/httpError.js";
+import * as z from "zod";
+import db from "../config/drizzle.js";
+import { eq } from "drizzle-orm";
 
-export async function changeUsername( req : Request, res : Response ){
-    const username = req.username
-    const newUsername = req.body.newUsername
-    console.log(username,newUsername)
-    if(!newUsername){
-        return res.status(400).json({message: 'New username not provided'})
+export const changeUsername: RequestHandler = async (req, res) => {
+  const { username, userId } = req;
+  const newUsernameValidation = userInsertSchema
+    .pick({ username: true })
+    .safeParse(req.body);
+  if (!newUsernameValidation.success) {
+    const errors = z.flattenError(newUsernameValidation.error).fieldErrors;
+    throw new HttpError(422, "Validation failed", errors);
+  }
+  const newUsername = newUsernameValidation.data.username;
+
+  if (username === newUsername) {
+    throw new HttpError(
+      400,
+      "New username must be different from the current one",
+    );
+  }
+
+  const user = await db.query.users.findFirst({
+    where: eq(users.id, userId!),
+  });
+  if (!user) {
+    throw new HttpError(404, "User not found");
+  }
+
+  try {
+    const newUser = await db
+      .update(users)
+      .set({ username: newUsername })
+      .where(eq(users.id, userId!))
+      .returning();
+
+    const xAddResult = await redisClient.xAdd("changeUsername", "*", {
+      userId: user.id,
+      newUsername: newUsername,
+    });
+
+    const [accessToken, refreshToken] = generateTokens(
+      newUser[0].id,
+      newUser[0].username,
+    );
+    res.status(200).json({ accessToken, refreshToken });
+  } catch (err: any) {
+    if (err.cause.code === "23505") {
+      throw new HttpError(400, "Username already exists");
     }
-    try{
-        const user = await prisma.user.findUnique({
-            where:{
-                username : username
-            }
-        })
-        console.log(user)
-        if(!user){
-            return res.status(401).json({message : 'Username not found'})
-        } 
+    throw err;
+  }
+};
 
-        const updatedUser = await prisma.user.update({
-            where: {
-                id: user.id
-            },
-            data: {
-                username: newUsername
-            }
-        })
-        if(!updatedUser){
-            throw new Error('postgres update error')
-        }
-
-        const xAddResult = await redisClient.xAdd('changeUsername','*',{
-            userId:user.id,
-            newUsername:newUsername
-        })
-        // if(!xAddResult){
-        //     throw new Error('redis error')
-        // }
-
-        const [accessToken,refreshToken] = generateTokens(user.id,newUsername)
-        return res.status(200).json({accessToken,refreshToken})
-
-    } catch (err) {
-        console.log('Error during changing username: ', err)
-        if (err instanceof Error) {
-            res.status(500).json({ message: err.message })
-        } else {
-            res.status(500).json({ message: "An unexpected error occurred" })
-        }
-    }
-}
-
-export async function changePassword( req : Request, res : Response ){
-
-}
+export const changePassword: RequestHandler = async (req, res) => {};
