@@ -7,7 +7,7 @@ interface CustomJwtPayload extends JwtPayload {
     username: string;
 }
 
-const verifyJWT = (req: Request, res: Response, next: NextFunction) => {
+const requireAuth = (req: Request, res: Response, next: NextFunction) => {
     const authHeader = req.headers.authorization || (req.headers.Authorization as string | undefined);
     
     if (!authHeader?.startsWith('Bearer ')) {
@@ -32,4 +32,4 @@ const verifyJWT = (req: Request, res: Response, next: NextFunction) => {
     )
 }
 
-export default verifyJWT;
+export default requireAuth;

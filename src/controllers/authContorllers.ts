@@ -1,105 +1,126 @@
-import jwt from 'jsonwebtoken'
-import type { JwtPayload, VerifyErrors } from 'jsonwebtoken'
-import redisClient from '../config/redis.js'
-import bcrypt from 'bcrypt'
-import type { Request, Response } from 'express';
-import { prisma } from '../config/prisma.js'
+import jwt from "jsonwebtoken";
+import type { JwtPayload } from "jsonwebtoken";
+import redisClient from "../config/redis.js";
+import bcrypt from "bcrypt";
+import type { RequestHandler } from "express";
+import db from "../config/drizzle.js";
+import { eq } from "drizzle-orm";
+import { users, userInsertSchema } from "../db/schema.js";
+import HttpError from "../utils/httpError.js";
+import * as z from "zod";
+import env from "../config/env.js";
 
-interface CustomJwtPayload extends JwtPayload{
-    id: string;
-    username: string;
+interface CustomJwtPayload extends JwtPayload {
+  id: string;
+  username: string;
 }
 
-export const generateTokens = (userId: string, username: string): [string,string] => {
-    const accessToken = jwt.sign({ id: userId, username }, process.env.ACCESS_TOKEN_SECRET!, { expiresIn: '15m' })
-    const refreshToken = jwt.sign({ id: userId, username }, process.env.REFRESH_TOKEN_SECRET!)
-    return [accessToken, refreshToken]
-}
+export const generateTokens = (
+  userId: string,
+  username: string,
+): [string, string] => {
+  const accessToken = jwt.sign(
+    { id: userId, username },
+    env.ACCESS_TOKEN_SECRET,
+    { expiresIn: "15m" },
+  );
+  const refreshToken = jwt.sign(
+    { id: userId, username },
+    env.REFRESH_TOKEN_SECRET,
+  );
+  return [accessToken, refreshToken];
+};
 
-export const login = async (req: Request, res: Response) => {
-    const { username, password } = req.body
-    try{
-        const user = await prisma.user.findUnique({
-            where:{
-                username: username
-            }
-        })
-        if (!user || !(await bcrypt.compare(password, user.password))) {
-            return res.status(401).json({ message: "Invalid username or password" })
-        }
-        const [accessToken, refreshToken] = generateTokens(user.id,user.username)
-        const SEVEN_DAYS = 60 * 60 * 24 * 7
-        await redisClient.setEx(refreshToken, SEVEN_DAYS, user.id)
-        res.json({ accessToken, refreshToken })
-    } catch (err) {
-        console.log('Error during login: ', err)
-        if (err instanceof Error) {
-            res.status(500).json({ message: err.message })
-        } else {
-            res.status(500).json({ message: "An unexpected error occurred" })
-        }
+export const login: RequestHandler = async (req, res) => {
+  const userValidation = userInsertSchema.safeParse(req.body);
+  if (!userValidation.success) {
+    const errors = z.flattenError(userValidation.error).fieldErrors;
+    throw new HttpError(422, "Validation failed", errors);
+  }
+
+  const userData = userValidation.data;
+
+  const user = await db.query.users.findFirst({
+    where: eq(users.username, userData.username),
+  });
+
+  if (!user || !(await bcrypt.compare(userData.password, user.password))) {
+    throw new HttpError(401, "Invalid username or password");
+  }
+
+  const [accessToken, refreshToken] = generateTokens(user.id, user.username);
+  const SEVEN_DAYS = 60 * 60 * 24 * 7;
+  await redisClient.setEx(refreshToken, SEVEN_DAYS, user.id);
+  res.json({ success: true, accessToken, refreshToken });
+};
+
+export const refreshToken: RequestHandler = async (req, res) => {
+  const refreshToken = req.body.refreshToken;
+  if (refreshToken == null) {
+    throw new HttpError(401, "Token not provided");
+  }
+
+  const tokenExists = await redisClient.get(refreshToken);
+  if (!tokenExists) {
+    throw new HttpError(403, "Invalid or expired token");
+  }
+
+  try {
+    const decoded = jwt.verify(
+      refreshToken,
+      env.REFRESH_TOKEN_SECRET,
+    ) as CustomJwtPayload;
+
+    const accessToken = jwt.sign(
+      { id: decoded.id, username: decoded.username },
+      env.ACCESS_TOKEN_SECRET,
+      { expiresIn: "15m" },
+    );
+
+    res.json({ success: true, accessToken });
+  } catch (err) {
+    throw new HttpError(403, "Invalid or expired token");
+  }
+};
+
+export const signup: RequestHandler = async (req, res) => {
+  const userValidation = userInsertSchema.safeParse(req.body);
+  if (!userValidation.success) {
+    const errors = z.flattenError(userValidation.error).fieldErrors;
+    throw new HttpError(422, "Validation failed", errors);
+  }
+
+  const userData = userValidation.data;
+  try {
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(userData.password, saltRounds);
+
+    const newUser = await db
+      .insert(users)
+      .values({ username: userData.username, password: hashedPassword })
+      .returning();
+
+    const [accessToken, refreshToken] = generateTokens(
+      newUser[0].id,
+      newUser[0].username,
+    );
+    const SEVEN_DAYS = 60 * 60 * 24 * 7;
+    await redisClient.setEx(refreshToken, SEVEN_DAYS, newUser[0].id);
+    res.status(201).json({ success: true, accessToken, refreshToken });
+  } catch (err: any) {
+    if (err.cause.code === "23505") {
+      throw new HttpError(400, "Username already exists");
     }
-}
+    throw err;
+  }
+};
 
-export const refreshToken = async (req: Request, res: Response) => {
-    const refreshToken = req.body.token
-    if (refreshToken == null) { return res.status(401).json({ message: "Token not provided" }) }
-    try {
-        const tokenExists = await redisClient.get(refreshToken)
-        if (!tokenExists) { return res.status(403).json({ message: "Invalid token" }) }
+export const logout: RequestHandler = async (req, res) => {
+  const refreshToken = req.body.refreshToken;
+  if (refreshToken == null) {
+    throw new HttpError(401, "Token not provided");
+  }
 
-        jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET!, 
-            (err: VerifyErrors | null, decoded: string | JwtPayload | undefined) => {
-            if (err || !decoded) { return res.status(403).json({ message: "Invalid token" }) }
-            const payload = decoded as CustomJwtPayload
-            const userId = payload.id
-            const username = payload.username
-            const accessToken = jwt.sign({ id: userId, username }, process.env.ACCESS_TOKEN_SECRET!, { expiresIn: '15m' })
-            res.json({ accessToken })
-        })
-    } catch (err) {
-        console.error("Redis error during refresh:", err)
-        res.status(500).json({ message: "Server Error" })
-    }
-}
-
-export const signup = async (req: Request, res: Response) => {
-    try {
-        const saltRounds = 10
-        const hashedPassword = await bcrypt.hash(req.body.password,saltRounds)
-        const user = await prisma.user.create({
-            data: {
-                username: req.body.username,
-                password: hashedPassword
-            }
-        })
-        const [accessToken, refreshToken] = generateTokens(user.id,user.username)
-        const SEVEN_DAYS = 60 * 60 * 24 * 7
-        await redisClient.setEx(refreshToken, SEVEN_DAYS, user.id)
-        res.status(201).json({ accessToken, refreshToken })
-        } catch (err) {
-        if(err instanceof Error){
-            if ((err as any).code === 'P2002') {
-                return res.status(400).json({ message: 'A user with this username already exists.' })
-            }
-            res.status(400).json({ message: err.message })
-        } else {
-            res.status(500).json({message: "An unexpected error occured"})
-        }
-    }
-}
-
-export const logout = async (req: Request, res: Response) => {
-    const refreshToken = req.body.token
-    if (refreshToken == null) { return res.status(401).json({ message: "Token not provided" }) }
-    try {
-        // const tokenExists = await redisClient.get(refreshToken)
-        // if (!tokenExists) { return res.status(403).json({ message: "Invalid token" }) }
-        // Redis .del() returns 1 if deleted, 0 if not.
-        await redisClient.del(refreshToken)
-        res.status(204).send()
-    } catch (err) {
-        console.log("Redis error during logout: ", err)
-        res.status(500).json({ message: "Server Error" })
-    }
-}
+  await redisClient.del(refreshToken);
+  res.status(204).send();
+};
