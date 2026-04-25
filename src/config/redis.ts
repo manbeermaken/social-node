@@ -1,10 +1,18 @@
-import redis from 'redis'
+import redis from "redis";
+import logger from "../utils/logger.js"; // Adjust path to your logger
 
-const redisClient = redis.createClient()
+const redisClient = redis.createClient();
 
-redisClient.on('error',(err)=>console.log("Redis Client Error: ",err))
-redisClient.on('connect',()=>console.log("Connected to Redis"))
+redisClient.on("error", (err) => {
+  logger.error({ err }, "Redis Client Error");
+});
 
-redisClient.connect().catch(console.error)
+redisClient.on("connect", () => {
+  logger.info("Connected to Redis");
+});
 
-export default redisClient
+redisClient.connect().catch((err) => {
+  logger.error({ err }, "Failed to connect to Redis on startup");
+});
+
+export default redisClient;
