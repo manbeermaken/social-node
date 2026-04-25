@@ -1,5 +1,5 @@
 import redis from "redis";
-import logger from "../utils/logger.js"; // Adjust path to your logger
+import logger from "../utils/logger.js"; 
 
 const redisClient = redis.createClient();
 
@@ -8,7 +8,7 @@ redisClient.on("error", (err) => {
 });
 
 redisClient.on("connect", () => {
-  logger.info("Connected to Redis");
+  logger.info("Successfully connected to Redis");
 });
 
 redisClient.connect().catch((err) => {
