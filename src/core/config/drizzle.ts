@@ -1,5 +1,5 @@
 import { drizzle } from "drizzle-orm/node-postgres";
-import * as schema from "../db/schema.js";
+import * as schema from "@/core/schemas/user.schema.js";
 import logger from "../utils/logger.js";
 
 const db = drizzle({

@@ -1,9 +1,0 @@
-import type { Request, Response } from "express";
-
-function notFound(req: Request, res: Response) {
-  res.status(404).json({
-    message: `Route not found: ${req.method} ${req.originalUrl}`
-  });
-}
-
-export default notFound;

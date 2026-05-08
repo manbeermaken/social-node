@@ -1,8 +1,8 @@
 import app from "./app.js";
-import env from "./config/env.js";
-import connectDB from "./config/mongodb.js";
-import { checkPostgres } from "./config/drizzle.js";
-import logger from "./utils/logger.js";
+import env from "./core/config/env.js";
+import connectDB from "./core/config/mongodb.js";
+import { checkPostgres } from "@/core/config/drizzle.js";
+import logger from "./core/utils/logger.js";
 
 async function startServer() {
   await connectDB();
@@ -14,6 +14,6 @@ async function startServer() {
 }
 
 startServer().catch((error) => {
-  console.error("Failed to start server", error);
+  logger.fatal("Failed to start server", error);
   process.exit(1);
 });

@@ -6,7 +6,7 @@ import {
   getPost,
   updatePost,
   getPostFromId,
-} from "../controllers/postsControllers.js";
+} from "./posts.controller.js";
 
 const router = express.Router();
 
@@ -21,3 +21,4 @@ router.patch("/:id", getPostFromId, updatePost);
 router.delete("/:id", getPostFromId, deletePost);
 
 export default router;
+

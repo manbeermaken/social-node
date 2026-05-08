@@ -3,7 +3,7 @@ import {
   changePassword,
   changeUsername,
   getUserPosts,
-} from "../controllers/usersControllers.js";
+} from "./users.controller.js";
 
 const router = express.Router();
 

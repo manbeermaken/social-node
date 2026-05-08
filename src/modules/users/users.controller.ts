@@ -1,19 +1,19 @@
 import type { RequestHandler } from "express";
-import redisClient from "../config/redis.js";
-import { generateTokens } from "./authContorllers.js";
-import { userInsertSchema, users } from "../db/schema.js";
-import HttpError from "../utils/httpError.js";
+import redisClient from "@/core/config/redis.js";
+import generateTokens from "@/core/utils/generateTokens.js";
+import { users } from "@/core/schemas/user.schema.js";
+import { userValidationSchema } from "@/core/validations/user.validation.js";
+import HttpError from "@/core/utils/httpError.js";
 import * as z from "zod";
-import db from "../config/drizzle.js";
+import db from "@/core/config/drizzle.js";
 import { eq } from "drizzle-orm";
-import { paginationSchema } from "./postsControllers.js";
+import paginationSchema from "@/core/validations/pagination.validation.js";
 import type mongoose from "mongoose";
-import type { IPost } from "../models/Post.js";
-import Post from "../models/Post.js";
+import Post, { type IPost } from "@/core/models/post.model.js";
 
 export const changeUsername: RequestHandler = async (req, res) => {
   const { username, userId } = req;
-  const newUsernameValidation = userInsertSchema
+  const newUsernameValidation = userValidationSchema
     .pick({ username: true })
     .safeParse(req.body);
   if (!newUsernameValidation.success) {
@@ -64,7 +64,7 @@ export const changeUsername: RequestHandler = async (req, res) => {
 export const changePassword: RequestHandler = async (req, res) => {};
 
 export const getUserPosts: RequestHandler = async (req, res) => {
-  const usernameValidation = userInsertSchema
+  const usernameValidation = userValidationSchema
     .pick({ username: true })
     .safeParse(req.params);
   if (!usernameValidation.success) {

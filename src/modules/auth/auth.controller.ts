@@ -1,38 +1,25 @@
 import jwt from "jsonwebtoken";
 import type { JwtPayload } from "jsonwebtoken";
-import redisClient from "../config/redis.js";
+import redisClient from "@/core/config/redis.js";
 import bcrypt from "bcrypt";
 import type { RequestHandler } from "express";
-import db from "../config/drizzle.js";
+import db from "@/core/config/drizzle.js";
 import { eq } from "drizzle-orm";
-import { users, userInsertSchema } from "../db/schema.js";
-import HttpError from "../utils/httpError.js";
+import { users } from "@/core/schemas/user.schema.js";
+import HttpError from "@/core/utils/httpError.js";
 import * as z from "zod";
-import env from "../config/env.js";
+import env from "@/core/config/env.js";
+import generateTokens from "@/core/utils/generateTokens.js";
+import { userValidationSchema } from "@/core/validations/user.validation.js";
+import { authenticateUser } from "./auth.service.js";
 
 interface CustomJwtPayload extends JwtPayload {
   id: string;
   username: string;
 }
 
-export const generateTokens = (
-  userId: string,
-  username: string,
-): [string, string] => {
-  const accessToken = jwt.sign(
-    { id: userId, username },
-    env.ACCESS_TOKEN_SECRET,
-    { expiresIn: "15m" },
-  );
-  const refreshToken = jwt.sign(
-    { id: userId, username },
-    env.REFRESH_TOKEN_SECRET,
-  );
-  return [accessToken, refreshToken];
-};
-
 export const login: RequestHandler = async (req, res) => {
-  const userValidation = userInsertSchema.safeParse(req.body);
+  const userValidation = userValidationSchema.safeParse(req.body);
   if (!userValidation.success) {
     const errors = z.flattenError(userValidation.error).fieldErrors;
     throw new HttpError(422, "Validation failed", errors);
@@ -40,17 +27,21 @@ export const login: RequestHandler = async (req, res) => {
 
   const userData = userValidation.data;
 
-  const user = await db.query.users.findFirst({
-    where: eq(users.username, userData.username),
-  });
+  const { accessToken, refreshToken } = await authenticateUser(
+    userData.username,
+    userData.password,
+  );
+  // const user = await db.query.users.findFirst({
+  //   where: eq(users.username, userData.username),
+  // });
 
-  if (!user || !(await bcrypt.compare(userData.password, user.password))) {
-    throw new HttpError(401, "Invalid username or password");
-  }
+  // if (!user || !(await bcrypt.compare(userData.password, user.password))) {
+  //   throw new HttpError(401, "Invalid username or password");
+  // }
 
-  const [accessToken, refreshToken] = generateTokens(user.id, user.username);
-  const SEVEN_DAYS = 60 * 60 * 24 * 7;
-  await redisClient.setEx(refreshToken, SEVEN_DAYS, user.id);
+  // const { accessToken, refreshToken } = generateTokens(user.id, user.username);
+  // const SEVEN_DAYS = 60 * 60 * 24 * 7;
+  // await redisClient.setEx(refreshToken, SEVEN_DAYS, user.id);
   res.json({ success: true, accessToken, refreshToken });
 };
 
@@ -84,7 +75,7 @@ export const refreshToken: RequestHandler = async (req, res) => {
 };
 
 export const signup: RequestHandler = async (req, res) => {
-  const userValidation = userInsertSchema.safeParse(req.body);
+  const userValidation = userValidationSchema.safeParse(req.body);
   if (!userValidation.success) {
     const errors = z.flattenError(userValidation.error).fieldErrors;
     throw new HttpError(422, "Validation failed", errors);
@@ -100,7 +91,7 @@ export const signup: RequestHandler = async (req, res) => {
       .values({ username: userData.username, password: hashedPassword })
       .returning();
 
-    const [accessToken, refreshToken] = generateTokens(
+    const {accessToken, refreshToken} = generateTokens(
       newUser[0].id,
       newUser[0].username,
     );

@@ -1,5 +1,5 @@
 import mongoose, { Schema, Document } from "mongoose";
-import { type PostType } from "../schemas/post.schema.js";
+import { type PostType } from "../validations/post.validation.js";
 
 export interface IPost extends PostType, Document {
   createdAt: Date;

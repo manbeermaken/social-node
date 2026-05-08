@@ -1,0 +1,10 @@
+version: '3'
+
+services:
+  app:
+    image: ghcr.io/manbeermaken/social-node:latest
+    container_name: social-node
+    env_file: 
+      - .env
+    ports:
+      - "8000:8000"

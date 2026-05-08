@@ -5,9 +5,6 @@ on:
     tags:
       - 'v*'
 
-env:
-  IMAGE_NAME: ${{ github.repository }}
-
 jobs:
   build-and-release:
     name: Build and Release
@@ -33,13 +30,13 @@ jobs:
         run: npm run build
 
       - name: Create Tar folder
-        run: tar -cJf social-node_${{ github.ref_name }}.tar.xz -C dist .
+        run: tar -cJf social-node.tar.xz --transform 's,^,social-node/,' dist/ package.json package-lock.json .env.example
 
       - name: Release
         uses: softprops/action-gh-release@v3
         with:
           name: Release ${{ github.ref_name }}
-          files: social-node_${{ github.ref_name }}.tar.xz
+          files: social-node.tar.xz
           generate_release_notes: true
 
   build-and-push-image:
@@ -78,6 +75,8 @@ jobs:
       - 
         name: Set up QEMU
         uses: docker/setup-qemu-action@v4
+        with:
+          platforms: all
 
       -
         name: Set up Docker Buildx

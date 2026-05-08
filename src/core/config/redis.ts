@@ -1,5 +1,5 @@
 import redis from "redis";
-import logger from "../utils/logger.js"; 
+import logger from "../utils/logger.js";
 
 const redisClient = redis.createClient();
 
@@ -12,7 +12,8 @@ redisClient.on("connect", () => {
 });
 
 redisClient.connect().catch((err) => {
-  logger.error({ err }, "Failed to connect to Redis on startup");
+  logger.fatal({ err }, "Failed to connect to Redis. Exiting process.");
+  process.exit(1);
 });
 
 export default redisClient;

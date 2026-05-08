@@ -1,5 +1,5 @@
 import { Request } from 'express';
-import { type IPost } from './models/Post.ts';
+import { type IPost } from '@/core/models/post.model.ts';
 
 declare global {
   namespace Express {

@@ -39,3 +39,4 @@ export const createPostSchema = z.object({
 });
 
 export type PostType = z.infer<typeof createPostSchema>;
+

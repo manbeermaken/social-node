@@ -1,14 +1,13 @@
-import Post from "../models/Post.js";
-import type { IPost } from "../models/Post.js";
+import Post, { type IPost } from "@/core/models/post.model.js";
 import type { RequestHandler } from "express";
-import db from "../config/drizzle.js";
-import { users } from "../db/schema.js";
+import db from "@/core/config/drizzle.js";
+import { users } from "@/core/schemas/user.schema.js";
 import * as z from "zod";
-import HttpError from "../utils/httpError.js";
+import HttpError from "@/core/utils/httpError.js";
 import mongoose from "mongoose";
-import { createPostSchema } from "../schemas/post.schema.js";
+import { createPostSchema } from "@/core/validations/post.validation.js";
 import { eq } from "drizzle-orm";
-import env from "../config/env.js";
+import env from "@/core/config/env.js";
 
 export const objectIdSchema = z
   .string()
