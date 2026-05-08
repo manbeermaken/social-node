@@ -48,7 +48,7 @@ export const changeUsername: RequestHandler = async (req, res) => {
       newUsername: newUsername,
     });
 
-    const [accessToken, refreshToken] = generateTokens(
+    const {accessToken, refreshToken} = generateTokens(
       newUser[0].id,
       newUser[0].username,
     );

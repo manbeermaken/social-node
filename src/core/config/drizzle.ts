@@ -1,9 +1,10 @@
 import { drizzle } from "drizzle-orm/node-postgres";
 import * as schema from "@/core/schemas/user.schema.js";
 import logger from "../utils/logger.js";
+import env from './env.js'
 
 const db = drizzle({
-  connection: process.env.POSTGRES_DATABASE_URL,
+  connection: env.POSTGRES_DATABASE_URL,
   casing: "snake_case",
   schema,
 });
